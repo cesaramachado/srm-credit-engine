@@ -1,0 +1,47 @@
+{
+  "realm": "srm-credit-engine",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": {
+    "client": {
+      "srm-credit-engine-api": [
+        { "name": "OPERADOR", "description": "Role de operador; permissões de negócio pendentes" },
+        { "name": "AUDITOR", "description": "Role de auditoria; permissões de negócio pendentes" },
+        { "name": "ADMINISTRADOR", "description": "Role administrativa; permissões de negócio pendentes" }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "srm-credit-engine-api",
+      "name": "SRM Credit Engine API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true
+    },
+    {
+      "clientId": "srm-credit-engine-swagger",
+      "name": "SRM Credit Engine Swagger UI (local)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": ["http://localhost:18080/swagger-ui/oauth2-redirect.html"],
+      "webOrigins": ["http://localhost:18080"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"]
+    }
+  ]
+}

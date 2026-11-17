@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: srm-credit-engine-config
+data:
+  SPRING_PROFILES_ACTIVE: "local,graylog"
+  SERVER_PORT: "8080"
+  DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=srm_credit_engine;encrypt=true;trustServerCertificate=false"
+  KEYCLOAK_ISSUER_URI: "https://keycloak.example.com/realms/srm-credit-engine"
+  KEYCLOAK_JWK_SET_URI: "https://keycloak.example.com/realms/srm-credit-engine/protocol/openid-connect/certs"
+  KEYCLOAK_PUBLIC_URL: "https://keycloak.example.com"
+  KEYCLOAK_CLIENT_ID: "srm-credit-engine-api"
+  SPRING_DATA_REDIS_HOST: "redis"
+  SPRING_DATA_REDIS_PORT: "6379"
+  ACTUATOR_METRICS_USERNAME: "metrics"
+  GRAYLOG_HOST: "graylog"
+  GRAYLOG_PORT: "12201"

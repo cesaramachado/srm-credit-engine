@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: srm-credit-engine
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: __METRICS_USERNAME__
+      password: __METRICS_PASSWORD__
+    static_configs:
+      - targets: ["app:8080"]
+
+  - job_name: keycloak
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["keycloak:9000"]
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]

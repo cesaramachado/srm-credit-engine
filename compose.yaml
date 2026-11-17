@@ -1,0 +1,263 @@
+name: srm-credit-engine
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU20-ubuntu-22.04
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Copy .env.example to .env and set local secrets}
+    ports:
+      - "127.0.0.1:${SQLSERVER_HOST_PORT:-11433}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -b -Q 'SELECT 1' -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+    networks: [project]
+
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-CU20-ubuntu-22.04
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - >-
+        for attempt in $(seq 1 60); do
+          /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -v AppDatabase="$$DB_NAME" AppLogin="$$DB_USERNAME" AppPassword="$$DB_PASSWORD" -i /scripts/init.sql && exit 0;
+          sleep 5;
+        done;
+        exit 1
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+      DB_NAME: ${DB_NAME:-srm_credit_engine}
+      DB_USERNAME: ${DB_USERNAME:-credit_engine_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - ./infra/sql/init.sql:/scripts/init.sql:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: "no"
+    networks: [project]
+
+  redis:
+    image: redis:7.4.12-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    restart: unless-stopped
+    networks: [project]
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.93.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [project]
+
+  keycloak-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [project]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "8080"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:18180}
+      KC_HOSTNAME_STRICT: "false"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?Set KEYCLOAK_ADMIN_USERNAME in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_HOST_PORT:-18180}:8080"
+    volumes:
+      - ./infra/keycloak/realm-import:/opt/keycloak/data/import:ro
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [project]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: local,graylog
+      SERVER_PORT: "8080"
+      DB_URL: jdbc:sqlserver://sqlserver:1433;databaseName=${DB_NAME:-srm_credit_engine};encrypt=true;trustServerCertificate=true
+      DB_USERNAME: ${DB_USERNAME:-credit_engine_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:18180}/realms/srm-credit-engine
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/srm-credit-engine/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: srm-credit-engine-api
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      ACTUATOR_METRICS_USERNAME: ${ACTUATOR_METRICS_USERNAME:-metrics}
+      ACTUATOR_METRICS_PASSWORD: ${ACTUATOR_METRICS_PASSWORD:?Set ACTUATOR_METRICS_PASSWORD in .env}
+      GRAYLOG_HOST: graylog
+      GRAYLOG_PORT: "12201"
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-18080}:8080"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    restart: unless-stopped
+    networks: [project]
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        sed -e "s|__METRICS_USERNAME__|$$ACTUATOR_METRICS_USERNAME|g" -e "s|__METRICS_PASSWORD__|$$ACTUATOR_METRICS_PASSWORD|g" /etc/prometheus/prometheus.yml.tpl > /tmp/prometheus.yml;
+        exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.path=/prometheus
+    environment:
+      ACTUATOR_METRICS_USERNAME: ${ACTUATOR_METRICS_USERNAME:-metrics}
+      ACTUATOR_METRICS_PASSWORD: ${ACTUATOR_METRICS_PASSWORD:?Set ACTUATOR_METRICS_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml.tpl:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      app:
+        condition: service_healthy
+      redis-exporter:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+    networks: [project]
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-13000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+    restart: unless-stopped
+    networks: [project]
+
+  graylog-mongodb:
+    image: mongo:7.0
+    volumes:
+      - graylog_mongodb_data:/data/db
+      - graylog_mongodb_config:/data/configdb
+    restart: unless-stopped
+    networks: [project]
+
+  graylog-datanode:
+    image: graylog/graylog-datanode:7.2
+    hostname: graylog-datanode
+    environment:
+      GRAYLOG_DATANODE_NODE_ID_FILE: /var/lib/graylog-datanode/node-id
+      GRAYLOG_DATANODE_PASSWORD_SECRET: ${GRAYLOG_PASSWORD_SECRET:?Set GRAYLOG_PASSWORD_SECRET in .env}
+      GRAYLOG_DATANODE_MONGODB_URI: mongodb://graylog-mongodb:27017/graylog
+    volumes:
+      - graylog_datanode_data:/var/lib/graylog-datanode
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    depends_on:
+      - graylog-mongodb
+    restart: unless-stopped
+    networks: [project]
+
+  graylog:
+    image: graylog/graylog:7.2
+    hostname: graylog
+    environment:
+      GRAYLOG_NODE_ID_FILE: /usr/share/graylog/data/data/node-id
+      GRAYLOG_PASSWORD_SECRET: ${GRAYLOG_PASSWORD_SECRET:?Set GRAYLOG_PASSWORD_SECRET in .env}
+      GRAYLOG_ROOT_PASSWORD_SHA2: ${GRAYLOG_ROOT_PASSWORD_SHA2:?Set GRAYLOG_ROOT_PASSWORD_SHA2 in .env}
+      GRAYLOG_HTTP_BIND_ADDRESS: 0.0.0.0:9000
+      GRAYLOG_HTTP_EXTERNAL_URI: ${GRAYLOG_PUBLIC_URL:-http://localhost:19000/}
+      GRAYLOG_MONGODB_URI: mongodb://graylog-mongodb:27017/graylog
+    ports:
+      - "127.0.0.1:${GRAYLOG_HOST_PORT:-19000}:9000"
+      - "127.0.0.1:${GRAYLOG_GELF_UDP_HOST_PORT:-12202}:12201/udp"
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+    depends_on:
+      graylog-mongodb:
+        condition: service_started
+      graylog-datanode:
+        condition: service_started
+    restart: unless-stopped
+    networks: [project]
+
+volumes:
+  sqlserver_data:
+  redis_data:
+  keycloak_db_data:
+  prometheus_data:
+  grafana_data:
+  graylog_mongodb_data:
+  graylog_mongodb_config:
+  graylog_datanode_data:
+  graylog_data:
+
+networks:
+  project:
+    driver: bridge

@@ -1,6 +1,43 @@
 spring:
   application:
     name: srm-credit-engine
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/srm-credit-engine}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/srm-credit-engine/protocol/openid-connect/certs}
+
+keycloak:
+  client-id: ${KEYCLOAK_CLIENT_ID:srm-credit-engine-api}
+  public-url: ${KEYCLOAK_PUBLIC_URL:http://localhost:18180}
+
+springdoc:
+  swagger-ui:
+    oauth:
+      client-id: ${KEYCLOAK_SWAGGER_CLIENT_ID:srm-credit-engine-swagger}
+      use-pkce-with-authorization-code-grant: true
 
 server:
   port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        srm.pricing.calculations: true
+  metrics-auth:
+    username: ${ACTUATOR_METRICS_USERNAME:metrics}
+    password: ${ACTUATOR_METRICS_PASSWORD:}

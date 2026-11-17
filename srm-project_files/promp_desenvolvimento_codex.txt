@@ -1,0 +1,714 @@
+# INSTRUÇÕES PARA DESENVOLVIMENTO — SRM CREDIT ENGINE
+
+Atue como um desenvolvedor Java sênior, responsável por analisar, planejar e implementar o projeto SRM Credit Engine conforme o enunciado do desafio técnico e as decisões definidas neste documento.
+
+O objetivo é desenvolver uma solução de backend com qualidade de código, escalabilidade, precisão financeira, segurança, consistência transacional, testes automatizados, observabilidade e documentação, demonstrando competências esperadas de um profissional Java sênior.
+
+# REGRAS GERAIS DE DESENVOLVIMENTO
+
+* Não invente regras de negócio, requisitos ou funcionalidades que não estejam no enunciado ou nas decisões já estabelecidas.
+* Não simplifique regras de negócio para facilitar a implementação.
+* Não altere decisões já aprovadas sem apresentar justificativa e solicitar autorização.
+* Não faça alterações desnecessárias em arquivos ou configurações existentes.
+* Priorize código legível, organizado, testável, seguro e compatível com as práticas esperadas de um desenvolvedor Java sênior.
+
+# ANÁLISE E PLANEJAMENTO INICIAL
+
+Antes de escrever qualquer código, analise integralmente o enunciado do desafio, os arquivos existentes no projeto e todas as instruções deste documento.
+
+Nesta primeira etapa, NÃO implemente nada.
+
+Apresente um planejamento técnico contendo:
+
+* Estrutura de diretórios e pacotes.
+* Arquitetura proposta e responsabilidades de cada camada.
+* Entidades, relacionamentos e principais estruturas de dados.
+* Endpoints REST necessários.
+* Estratégia de persistência e migrations.
+* Estratégia para transações, idempotência e concorrência.
+* Estratégia para auditoria e imutabilidade das liquidações.
+* Estratégia de cálculo financeiro, precisão e arredondamento.
+* Estratégia de autenticação e autorização com Keycloak.
+* Estratégia de resiliência e Circuit Breaker.
+* Estratégia de observabilidade com Prometheus, Grafana e Graylog.
+* Estratégia de gerenciamento de memória e monitoramento da JVM.
+* Estratégia de testes unitários e de integração.
+* Configurações necessárias para execução local.
+* Etapas de implementação, em ordem de execução.
+* Decisões técnicas relevantes e possíveis impactos.
+* Pontos do enunciado que apresentem ambiguidades ou dependam de definição.
+
+Quando houver ambiguidades, apresente as dúvidas e possíveis premissas separadamente. Não transforme perguntas sem resposta em requisitos de implementação.
+
+Aguarde minha aprovação do planejamento antes de iniciar qualquer implementação.
+
+# TECNOLOGIAS E FERRAMENTAS
+
+Utilize as seguintes tecnologias:
+
+* Java 21.
+* Spring Boot 3.
+* Maven.
+* Spring Data JPA.
+* Hibernate.
+* SQL Server 2022.
+* Flyway.
+* Springdoc OpenAPI.
+* JUnit 5.
+* Mockito.
+* Testcontainers.
+* MapStruct.
+* Lombok.
+* Spring Security.
+* OAuth2 e OpenID Connect (OIDC).
+* Keycloak.
+* Resilience4j.
+* Redis.
+* Spring Boot Actuator.
+* Micrometer.
+* Prometheus.
+* Grafana.
+* Graylog.
+* JaCoCo.
+* Docker e Docker Compose.
+* Jenkins.
+* Mermaid.
+
+O projeto será desenvolvido localmente nesta etapa, mas deverá estar preparado para ser versionado em um repositório Git.
+
+Utilize a pasta existente como raiz e não crie uma segunda pasta de projeto dentro dela.
+
+# JAVA E PADRÕES DE DESENVOLVIMENTO
+
+* Utilizar Java 21.
+* Aplicar boas práticas de orientação a objetos.
+* Manter baixo acoplamento e alta coesão.
+* Respeitar as responsabilidades de cada classe.
+* Evitar métodos e classes excessivamente grandes.
+* Evitar complexidade desnecessária.
+* Utilizar nomes claros e consistentes.
+* Não criar abstrações sem necessidade.
+
+## Injeção de dependências
+
+Utilize o mecanismo de Injeção de Dependências do Spring.
+
+* Preferir injeção por construtor.
+* Utilizar construtores explícitos ou Lombok com `@RequiredArgsConstructor` quando apropriado.
+* Evitar injeção por atributos utilizando `@Autowired`.
+* Evitar criação manual de dependências que deveriam ser gerenciadas pelo Spring.
+* Evitar dependências circulares.
+* Utilizar configurações e beans Spring somente quando necessário.
+* Facilitar testes unitários por meio da correta separação e injeção das dependências.
+
+## Lombok
+
+* Utilizar Lombok de forma moderada.
+* Evitar o uso indiscriminado de anotações.
+* Não utilizar `@Data` indiscriminadamente em entidades JPA.
+* Preferir `@RequiredArgsConstructor` para injeção por construtor quando apropriado.
+
+# SPRING BOOT E ARQUITETURA
+
+Utilize Spring Boot 3 com arquitetura tradicional em camadas.
+
+Organize o projeto considerando:
+
+* Controller.
+* Service.
+* Repository.
+* Entity.
+* DTO.
+* Config.
+* Exception.
+
+Utilize o pacote base:
+
+`br.com.srm.creditengine`
+
+O projeto deverá manter separação entre apresentação, regras de negócio e persistência.
+
+Não adote uma arquitetura excessivamente complexa. Priorize organização, legibilidade, manutenção e aderência ao escopo.
+
+## Regras de negócio e padrões de projeto
+
+Utilize o padrão Strategy para implementar as regras de precificação conforme o tipo de recebível, permitindo adicionar novos tipos sem modificar desnecessariamente as estratégias existentes.
+
+Quando necessário, implemente o padrão Factory.
+
+# SPRING DATA JPA E HIBERNATE
+
+Utilize Spring Data JPA e Hibernate para persistência e mapeamento objeto-relacional.
+
+* Mapear corretamente as entidades e seus relacionamentos.
+* Definir tipos de dados compatíveis com as necessidades financeiras.
+* Evitar carregamento EAGER indiscriminado.
+* Evitar problemas de N+1.
+* Utilizar projeções, EntityGraph, JOIN FETCH ou estratégias adequadas a cada consulta.
+* Avaliar o carregamento de relacionamentos conforme a necessidade de cada operação.
+* Evitar consultas desnecessárias.
+* Utilizar paginação nas consultas que possam retornar grandes volumes de dados.
+* Considerar o impacto das consultas e do cache sobre o consumo de memória.
+
+Utilize o controle de concorrência otimista por meio de `@Version` na entidade apropriada.
+
+Garanta que duas tentativas simultâneas de liquidação do mesmo recebível não produzam liquidações duplicadas ou inconsistentes.
+
+# SQL SERVER E PERSISTÊNCIA
+
+Utilize o SQL Server 2022 já existente em um container Docker.
+
+O container já está em execução e não deve ser recriado, removido, alterado ou substituído.
+
+Utilize o banco de dados `srm_credit_engine`, que deverá ser criado para o projeto caso ainda não exista.
+
+* SQL Server como banco principal.
+* Configure a conexão por variáveis de ambiente.
+* Não deixe credenciais sensíveis diretamente no código ou versionadas no Git.
+* Utilize NUMERIC/DECIMAL para valores monetários e demais números que exijam precisão.
+
+Crie os perfis `local` e `test`.
+
+* O perfil `local` deverá utilizar o SQL Server já existente.
+* O perfil `test` deverá utilizar Testcontainers para executar os testes de integração em um banco isolado, sem interferir nos dados do ambiente local.
+
+Não altere a configuração do Docker Compose já existente.
+
+Antes de adicionar qualquer serviço ao ambiente, verifique quais containers já existem e estão disponíveis. Não recrie, remova, substitua ou modifique serviços existentes sem autorização.
+
+# FLYWAY E VERSIONAMENTO DO BANCO
+
+Utilize Flyway para versionamento e execução das migrations.
+
+* Criar migrations SQL compatíveis com SQL Server.
+* Manter o histórico de alterações do banco versionado.
+* Garantir que a estrutura do banco seja reproduzida a partir das migrations.
+* Não depender de alterações manuais no banco para que o projeto funcione.
+* Validar a execução das migrations nos ambientes local e de teste.
+
+# REGRAS DE NEGÓCIO E PRECISÃO FINANCEIRA
+
+Respeite integralmente as fórmulas, taxas, spreads e regras estabelecidas no enunciado.
+
+Fórmula de cálculo:
+
+VP = VF / (1 + Taxa Base + Spread) ^ Prazo
+
+Spreads definidos:
+
+* Duplicata: 1,5% ao mês.
+* Cheque pré-datado: 2,5% ao mês.
+
+Nos Golden Cases, considere taxa base de 1% ao mês, prazos em meses inteiros e juros compostos.
+
+## Precisão numérica
+
+* Utilizar `BigDecimal` para cálculos financeiros.
+* Utilizar NUMERIC/DECIMAL no banco de dados.
+* Nunca utilizar `float` ou `double` para valores monetários.
+* Utilizar HALF_EVEN.
+* Valores monetários com duas casas decimais.
+* Arredondar somente o resultado final.
+* Em operações entre BRL e USD, calcular e arredondar primeiro o valor presente em BRL e depois realizar a conversão.
+
+NÃO INVENTE NENHUM CÁLCULO.
+
+Implemente testes automatizados para os três Golden Cases obrigatórios do enunciado.
+
+Não altere os valores esperados dos casos de referência.
+
+# MOTOR CAMBIAL
+
+Implemente o mecanismo de consulta e utilização de cotações cambiais conforme o escopo do desafio.
+
+* A integração cambial será simulada, com cotações configuráveis localmente.
+* Não haverá dependência de um serviço externo nesta etapa.
+* Considerar as datas de vigência das cotações.
+* Registrar a cotação efetivamente utilizada em cada liquidação.
+* Garantir que os cálculos utilizem a cotação correspondente à operação.
+
+# REDIS E CACHE
+
+Utilize Redis para cache quando apropriado.
+
+* Avaliar o uso de cache para taxas e cotações cambiais.
+* Respeitar as datas de vigência das taxas e cotações.
+* Não permitir que dados desatualizados sejam utilizados indevidamente em uma liquidação.
+* Considerar o impacto do cache sobre o consumo de memória.
+* Monitorar a utilização e o comportamento do Redis.
+
+# LIQUIDAÇÃO, TRANSAÇÕES E CONCORRÊNCIA
+
+As liquidações devem respeitar as propriedades ACID.
+
+## Idempotência
+
+Implemente idempotência para impedir liquidações duplicadas em caso de repetição de requisições, tentativas simultâneas ou duplo clique.
+
+* Utilizar a chave `Idempotency-Key`.
+* Persistir e validar adequadamente as chaves.
+* Garantir o comportamento correto em requisições simultâneas.
+* Criar testes específicos de idempotência.
+
+## Concorrência
+
+* Implementar controle de concorrência otimista utilizando `@Version`.
+* Garantir que duas tentativas simultâneas de liquidação do mesmo recebível não produzam liquidações duplicadas ou inconsistentes.
+* Criar testes específicos de concorrência.
+
+## Transações
+
+* Garantir atomicidade das operações.
+* Em caso de falha, nenhuma parte da liquidação deverá permanecer gravada indevidamente.
+* Testar o rollback das transações.
+* Garantir consistência entre a liquidação, a atualização do recebível e os registros relacionados.
+
+# AUDITORIA
+
+Cada liquidação deverá gerar um registro de auditoria imutável, preservando os dados necessários para rastrear a operação.
+
+Registrar:
+
+* Valores utilizados no cálculo.
+* Taxas.
+* Spreads.
+* Cotação cambial, quando aplicável.
+* Valores resultantes.
+* Informações temporais.
+
+Uma liquidação já registrada não poderá ser alterada.
+
+# API REST
+
+A aplicação deverá disponibilizar exclusivamente uma API REST, com endpoints semânticos.
+
+## Documentação
+
+Utilize Springdoc OpenAPI para disponibilizar a documentação Swagger.
+
+* Documentar os endpoints.
+* Documentar parâmetros e respostas.
+* Documentar os códigos HTTP utilizados.
+* Manter a documentação compatível com o comportamento real da API.
+
+## Validação e consultas
+
+* Implementar validação de entradas utilizando Bean Validation.
+* Utilizar paginação e ordenação nos endpoints de consulta, especialmente no extrato analítico.
+* Implementar filtros por período, cedente e moeda, conforme o escopo do desafio.
+* Retornar respostas consistentes e adequadas ao contrato da API.
+
+## Consultas
+
+Utilizar consultas eficientes, evitando problemas de N+1 por meio de projeções, EntityGraph, JOIN FETCH ou estratégias adequadas a cada consulta.
+
+# SPRING SECURITY E KEYCLOAK
+
+Utilize Spring Security com OAuth2 e OpenID Connect (OIDC), integrado ao Keycloak.
+
+* Configurar a aplicação como OAuth2 Resource Server.
+* Utilizar JWT emitido pelo Keycloak para autenticação.
+* Validar assinatura, issuer e validade dos tokens.
+* Configurar o endereço do Keycloak e o Realm por variáveis de ambiente.
+* Configurar Client ID e demais parâmetros necessários sem expor credenciais.
+* Implementar autorização baseada em roles e permissões.
+* Mapear as roles do Keycloak para as authorities do Spring Security.
+* Proteger os endpoints conforme as permissões necessárias.
+* Não implementar autenticação própria ou armazenamento de senhas de usuários.
+* Não armazenar tokens ou credenciais sensíveis no código ou em arquivos versionados.
+* Documentar a configuração do Realm, Client, roles e integração com a aplicação.
+
+Mantenha a integração compatível com Spring Security e evite acoplamento desnecessário entre as regras de negócio e o Keycloak.
+
+# TRATAMENTO DE EXCEÇÕES E ERROS
+
+Implemente tratamento global de exceções utilizando `@RestControllerAdvice`.
+
+Crie uma hierarquia própria de exceções do projeto, incluindo exceções específicas de negócio.
+
+Não utilize apenas exceções genéricas do Java ou mensagens de erro padrão para representar situações de negócio.
+
+Cada exceção deverá representar uma situação específica e possuir significado claro dentro do domínio.
+
+## Exceções de negócio
+
+Exemplos de exceções próprias:
+
+* `ReceivableNotFoundException`: recebível não encontrado.
+* `DuplicateSettlementException`: tentativa de liquidação duplicada.
+* `ExchangeRateUnavailableException`: cotação cambial indisponível.
+* `InvalidReceivableStateException`: estado do recebível incompatível com a operação.
+* `BusinessRuleViolationException`: violação de uma regra de negócio.
+
+Os exemplos não limitam a criação de outras exceções específicas quando forem necessárias.
+
+## Regras de implementação
+
+* Criar uma classe base própria para exceções de negócio.
+* Separar exceções de negócio de exceções técnicas e de infraestrutura.
+* Lançar cada exceção na camada responsável pela regra violada.
+* Não utilizar exceções genéricas para representar erros de negócio.
+* Não transformar erros inesperados de infraestrutura em erros de negócio.
+* Preservar a causa original das exceções técnicas quando necessário.
+* Centralizar o mapeamento das exceções para os respectivos status HTTP.
+* Retornar respostas de erro padronizadas, com código identificador e mensagem clara.
+* Incluir informações úteis para o consumidor da API, sem expor detalhes internos.
+* Não retornar stack traces, credenciais ou informações sensíveis nas respostas HTTP.
+
+As validações de entrada devem utilizar Bean Validation. Utilize exceções específicas de negócio quando a validação depender de regras ou estados do domínio.
+
+# RESILIÊNCIA E RESILIENCE4J
+
+Utilize Resilience4j para implementar mecanismos de resiliência na integração cambial.
+
+* Implementar Circuit Breaker.
+* Configurar adequadamente os estados CLOSED, OPEN e HALF_OPEN.
+* Definir limites de falhas, janela de monitoramento e tempo de recuperação.
+* Implementar timeout nas chamadas.
+* Utilizar retry somente quando fizer sentido, evitando repetição de operações não recuperáveis.
+* Não utilizar fallback que retorne cotações fictícias ou dados inconsistentes.
+* Garantir tratamento adequado quando a integração estiver indisponível.
+* Monitorar os estados e eventos do Circuit Breaker.
+* Testar os cenários de abertura, recuperação e fechamento do Circuit Breaker.
+
+As configurações deverão ser justificadas tecnicamente, evitando valores arbitrários ou mecanismos de resiliência desnecessários.
+
+# GARBAGE COLLECTOR E GERENCIAMENTO DE MEMÓRIA
+
+Considerar o gerenciamento de memória e o comportamento do Garbage Collector durante o desenvolvimento.
+
+* Utilizar adequadamente os recursos de memória da JVM.
+* Evitar retenção desnecessária de objetos e possíveis memory leaks.
+* Evitar carregamento desnecessário de grandes volumes de dados.
+* Utilizar paginação e processamento eficiente de coleções.
+* Considerar o impacto de consultas, cache e processamento sobre o consumo de memória.
+* Configurar logs e métricas que permitam acompanhar consumo de memória e comportamento do GC.
+* Monitorar heap, non-heap, threads e pausas do Garbage Collector.
+* Avaliar ajustes de heap e Garbage Collector somente quando houver evidências que justifiquem a otimização.
+* Não utilizar `System.gc()` como mecanismo de gerenciamento de memória.
+
+Não realizar otimizações prematuras. Priorizar a identificação de problemas por métricas e evidências antes de alterar parâmetros da JVM.
+
+# OBSERVABILIDADE E MONITORAMENTO
+
+Implementar uma estratégia de observabilidade utilizando Prometheus, Grafana e Graylog.
+
+## Spring Boot Actuator e Micrometer
+
+Utilizar Spring Boot Actuator e Micrometer para exposição de métricas.
+
+* Disponibilizar métricas de negócio, aplicação, infraestrutura e desempenho.
+* Proteger endpoints de gerenciamento e métricas.
+* Evitar métricas com alta cardinalidade ou informações pessoais.
+* Selecionar métricas relevantes para o negócio e para a operação.
+* Evitar instrumentação excessiva ou indicadores sem utilidade prática.
+
+Monitorar, no mínimo:
+
+* Quantidade de requisições HTTP.
+* Taxa de erros HTTP.
+* Latência dos endpoints.
+* Quantidade de liquidações realizadas.
+* Quantidade de liquidações com falha.
+* Latência do motor de precificação.
+* Falhas e estados do Circuit Breaker.
+* Consumo de memória heap e non-heap.
+* Quantidade de threads.
+* Comportamento e pausas do Garbage Collector.
+* Conexões ativas e utilização do pool de conexões do banco de dados.
+* Utilização e comportamento do cache Redis.
+* Saúde dos componentes e dependências da aplicação.
+
+## Prometheus
+
+Utilizar Prometheus para coleta de métricas.
+
+* Integrar a aplicação ao Prometheus por meio do endpoint de métricas.
+* Configurar a coleta das métricas disponibilizadas pelo Actuator e Micrometer.
+* Preparar os arquivos de configuração para versionamento junto ao projeto.
+
+## Grafana
+
+Utilizar Grafana para visualização das métricas coletadas pelo Prometheus.
+
+* Configurar o Prometheus como fonte de dados.
+* Criar dashboards objetivos para acompanhamento da aplicação.
+* Disponibilizar indicadores de saúde, desempenho, erros e liquidações.
+* Criar visualizações para o motor de precificação.
+* Monitorar JVM, Garbage Collector e consumo de memória.
+* Monitorar Circuit Breaker e integração cambial.
+* Monitorar banco de dados e Redis.
+* Preparar os dashboards para provisionamento e versionamento junto ao projeto.
+
+Os dashboards devem facilitar a identificação de problemas e permitir acompanhar o comportamento da aplicação.
+
+## Graylog
+
+Utilizar Graylog para centralização e consulta dos logs da aplicação.
+
+* Implementar logs estruturados em JSON.
+* Integrar o Spring Boot ao Graylog utilizando GELF.
+* Configurar o envio de logs por meio de um appender compatível com Logback.
+* Incluir timestamp, nível, aplicação, ambiente, classe, mensagem e correlation ID quando aplicável.
+* Registrar erros, exceções, falhas de integração, operações relevantes e eventos de negócio.
+* Preservar stack traces nos logs centralizados para facilitar diagnósticos.
+* Não registrar senhas, tokens, credenciais ou dados sensíveis.
+* Permitir filtragem e correlação de eventos por identificador de requisição.
+
+## Requisitos gerais de observabilidade
+
+* Utilizar configurações externas e variáveis de ambiente para conexões e credenciais.
+* Garantir que falhas no envio de logs ou na coleta de métricas não interrompam as operações de negócio.
+* Documentar a configuração, integração e execução dos componentes.
+* Criar testes ou validações para verificar a exposição das métricas e o envio dos logs.
+* Evitar adicionar ferramentas ou configurações sem justificativa técnica.
+
+Antes de implementar essas integrações, verificar a disponibilidade dos serviços no ambiente Docker existente.
+
+O ambiente já possui serviços em execução, incluindo Grafana. Não recriar ou substituir serviços existentes. Caso Prometheus ou Graylog não estejam disponíveis, apresentar a necessidade de configuração e preparar os arquivos de integração, sem modificar serviços ativos sem autorização.
+
+# TESTES E QUALIDADE
+
+Utilize JUnit 5, Mockito e Testcontainers.
+
+Implemente testes unitários e de integração.
+
+## Cobertura obrigatória
+
+Os testes deverão cobrir, no mínimo:
+
+* Os três Golden Cases obrigatórios.
+* Estratégias de precificação.
+* Precisão e arredondamento financeiro.
+* Conversões entre BRL e USD.
+* Validações de entrada.
+* Exceções de negócio.
+* Tratamento global de erros.
+* Idempotência.
+* Liquidações simultâneas.
+* Controle de concorrência.
+* Atomicidade e rollback das transações.
+* Auditoria.
+* Consultas e filtros do extrato.
+* Comportamentos de falha da integração cambial simulada.
+* Abertura e recuperação do Circuit Breaker.
+
+## JaCoCo
+
+Configure JaCoCo com cobertura mínima de 90%, fazendo o build falhar quando o limite não for atingido.
+
+A cobertura deve priorizar o código de produção e as regras relevantes do sistema.
+
+Não infle artificialmente a cobertura com testes sem valor ou com a inclusão desnecessária de DTOs, configurações simples e código gerado.
+
+# DOCUMENTAÇÃO
+
+Crie e mantenha os seguintes arquivos:
+
+## README.md
+
+* Descrição do projeto.
+* Tecnologias utilizadas.
+* Pré-requisitos.
+* Configuração de ambiente.
+* Como executar localmente.
+* Como executar os testes.
+* Endpoints disponíveis.
+* Configuração de autenticação com Keycloak.
+* Configuração de Prometheus, Grafana e Graylog.
+* Decisões técnicas relevantes.
+
+## SPEC.md
+
+* Premissas.
+* Dúvidas ao negócio.
+* Decisões de precisão numérica.
+* Critérios de aceite.
+* Conforme o escopo do desafio.
+
+## DECISIONS.md
+
+* Decisões técnicas.
+* Simplificações realizadas.
+* Funcionalidades eventualmente deixadas de fora.
+* Justificativas para os cortes e escolhas.
+* Justificativa das tecnologias adotadas.
+* Decisões sobre segurança, autenticação e autorização.
+* Decisões sobre observabilidade, métricas e centralização de logs.
+* Avaliação de alternativas arquiteturais, incluindo API Gateway.
+* Justificativa para não adotar API Gateway nesta versão, considerando que o projeto possui uma única API REST e não necessita de múltiplos serviços ou centralização de tráfego neste momento.
+
+## REVIEW.md
+
+* Análise do código TypeScript fornecido no anexo do desafio.
+* Problemas identificados.
+* Impactos e riscos.
+* Correções recomendadas.
+* Priorização por severidade.
+
+## AI_USAGE.md
+
+* Como a IA foi utilizada durante o desenvolvimento.
+* Prompts relevantes utilizados.
+* Exemplos de sugestões incorretas da IA.
+* Como os erros foram identificados e corrigidos.
+* Decisões que não foram delegadas à IA e justificativas.
+
+A documentação deverá refletir o que realmente foi implementado. Não invente funcionalidades, decisões ou resultados.
+
+# DIAGRAMAS E ARQUITETURA
+
+Crie diagramas C4 dos níveis 1 e 2 utilizando Mermaid.
+
+* Representar a arquitetura e os componentes efetivamente implementados.
+* Incluir Keycloak, banco de dados, Redis e componentes de observabilidade nos diagramas quando aplicável.
+
+# DOCKER E CONTAINERIZAÇÃO
+
+Crie um Dockerfile para a aplicação.
+
+Prepare um Docker Compose próprio do projeto, independente do Docker Compose pessoal já existente na máquina.
+
+O projeto deverá possuir os arquivos necessários para reproduzir seu ambiente em outra máquina.
+
+## Serviços e configurações
+
+Preparar e versionar os arquivos necessários, incluindo:
+
+* Docker Compose com os serviços necessários ao projeto.
+* Dockerfile da aplicação.
+* Arquivos de configuração de cada serviço.
+* Configurações de banco de dados e migrations.
+* Configurações do Redis.
+* Configurações do Keycloak, incluindo Realm, Clients e Roles.
+* Configurações do Prometheus.
+* Dashboards e provisionamento do Grafana.
+* Configurações de integração e entrada de logs do Graylog.
+* Configurações de rede, volumes e portas.
+* Arquivos de variáveis de ambiente de exemplo, como `.env.example`.
+* Scripts de inicialização, configuração e validação quando necessários.
+
+## Ambiente local
+
+* Configurar e executar os serviços necessários para o projeto na minha máquina.
+* Verificar os containers, imagens, portas, volumes e serviços já existentes antes de realizar qualquer alteração.
+* Aproveitar os serviços existentes quando forem compatíveis.
+* Não remover, recriar, substituir ou modificar containers e serviços existentes sem minha autorização explícita.
+* Quando necessário, configurar novos serviços de forma isolada, evitando conflitos com o ambiente atual.
+* Garantir a comunicação entre a aplicação e suas dependências.
+* Validar a inicialização, disponibilidade e funcionamento dos serviços.
+
+## Segurança e configuração
+
+* Não versionar senhas, tokens, chaves privadas ou credenciais reais.
+* Utilizar variáveis de ambiente para informações sensíveis.
+* Disponibilizar valores de exemplo seguros e instruções de preenchimento.
+* Não depender de caminhos absolutos ou configurações exclusivas da minha máquina.
+* Garantir que os serviços possam ser inicializados em uma instalação limpa do Docker.
+* Definir volumes persistentes quando necessário.
+* Documentar portas, dependências, ordem de inicialização e requisitos de infraestrutura.
+
+## Reprodutibilidade e validação
+
+O objetivo é permitir que qualquer pessoa que clone o repositório consiga configurar e executar a aplicação e suas dependências seguindo a documentação, sem depender de configurações manuais existentes na minha máquina.
+
+* Testar a inicialização do ambiente a partir dos arquivos versionados.
+* Validar a comunicação entre todos os componentes.
+* Verificar a aplicação, autenticação, banco de dados, cache, métricas, dashboards e centralização de logs.
+* Documentar como iniciar, interromper, reiniciar e verificar cada serviço.
+* Garantir que uma pessoa que clone o projeto consiga reproduzir o ambiente seguindo apenas o README.md e os arquivos fornecidos.
+
+Não considere o ambiente funcional apenas porque os serviços já estão executando na minha máquina.
+
+A configuração deverá estar integralmente documentada e reproduzível a partir do repositório, inclusive em uma máquina sem os containers previamente instalados.
+
+Diferencie claramente os serviços já existentes que foram aproveitados localmente dos serviços e configurações que fazem parte da infraestrutura reproduzível do projeto.
+
+# OPENSHIFT
+
+Prepare os manifestos necessários para uma futura implantação no OpenShift.
+
+Nesta etapa, apenas prepare os arquivos. Não execute deploy.
+
+# JENKINS E INTEGRAÇÃO CONTÍNUA
+
+Prepare um pipeline Jenkins para execução de:
+
+* Build.
+* Testes.
+* Análise de código.
+
+Considere uma futura integração com OpenShift.
+
+Nesta etapa, apenas prepare os arquivos. Não execute deploy e não altere os containers ou serviços já existentes.
+
+Verifique a disponibilidade dos componentes necessários antes de preparar configurações de integração.
+
+# API GATEWAY
+
+A utilização de API Gateway foi avaliada, mas não será implementada nesta versão.
+
+Registre essa decisão no `DECISIONS.md`, justificando que o projeto possui uma única API REST e que a inclusão de um Gateway aumentaria a complexidade operacional sem benefícios proporcionais ao escopo atual.
+
+A arquitetura poderá incorporar essa camada futuramente caso surjam necessidades de múltiplos serviços, roteamento centralizado ou políticas compartilhadas de acesso.
+
+Não implemente ou adicione dependências de API Gateway.
+
+# RESTRIÇÕES DE ARQUITETURA E PROCESSAMENTO
+
+* Não implemente RabbitMQ, mensageria ou processamento assíncrono.
+* O processamento será síncrono por meio da API REST.
+
+# GIT E VERSIONAMENTO
+
+Inicialize e organize o Git localmente.
+
+* Não publique o projeto em repositório remoto nesta etapa.
+* Utilize branches por funcionalidade.
+* Utilize commits pequenos e descritivos.
+* Adote Conventional Commits.
+* Mantenha o histórico rastreável.
+* Evite commits genéricos que agrupem muitas alterações sem relação entre si.
+* Não realize commits de funcionalidades que ainda não tenham sido testadas.
+
+# FORMA DE TRABALHO E IMPLEMENTAÇÃO
+
+Trabalhe de forma incremental, dividindo a implementação em etapas.
+
+Após minha aprovação do planejamento inicial:
+
+* Implemente uma etapa por vez.
+* Explique objetivamente o que será desenvolvido.
+* Execute os testes correspondentes.
+* Analise os resultados.
+* Corrija eventuais problemas antes de avançar.
+* Informe quais arquivos foram criados ou modificados.
+* Apresente os comandos necessários para executar e validar cada etapa.
+
+Não avance para uma nova etapa enquanto a anterior apresentar erros ou testes falhando.
+
+# ENTREGA FINAL
+
+Ao concluir, verifique:
+
+* Implementação de todos os requisitos aplicáveis do desafio.
+* Execução bem-sucedida dos testes.
+* Cobertura mínima configurada.
+* Integridade dos cálculos financeiros.
+* Funcionamento da idempotência e concorrência.
+* Integridade das transações e auditoria.
+* Tratamento correto das exceções próprias.
+* Autenticação e autorização integradas ao Keycloak.
+* Funcionamento do Circuit Breaker.
+* Monitoramento de memória e Garbage Collector.
+* Exposição das métricas para Prometheus.
+* Dashboards do Grafana preparados.
+* Centralização de logs no Graylog.
+* Documentação atualizada.
+* Dockerfile, manifestos OpenShift e pipeline Jenkins preparados.
+* Histórico Git organizado.
+* Aplicação executando corretamente no ambiente local.
+
+A solução deverá estar preparada para a defesa técnica, permitindo explicar as decisões arquiteturais, regras de negócio, estratégias de implementação, segurança, resiliência, observabilidade, testes e limitações.
+
+Se faltar algum item no meu Docker composse, me sinalize e peça a autorização para incrementar com parâmetros padrões.

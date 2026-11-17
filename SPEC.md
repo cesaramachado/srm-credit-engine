@@ -19,11 +19,17 @@
 
 ## Perguntas ao negócio
 
+- Qual taxa base e origem devem ser usadas nas operações fora dos Golden Cases?
 - A taxa base será fixa ou poderá ser atualizada?
 - A atualização das taxas e cotações será manual ou automática?
 - Qual cotação cambial deverá ser utilizada na liquidação?
 - O que fazer quando não houver cotação disponível?
+- Como interpretar os limites inicial e final da vigência de taxas e cotações: inclusivos ou exclusivos?
+- Como calcular o prazo em meses entre a data da operação e a data de vencimento?
 - Serão permitidos prazos fracionados?
+- Serão permitidas liquidações parciais? Se sim, como deverá ser calculado o saldo remanescente?
+- Quais operações cada perfil (OPERADOR, AUDITOR e ADMINISTRADOR) poderá executar?
+- Quais limites máximos devem ser aplicados aos valores, prazos, taxas e cotações?
 
 ## Precisão numérica
 

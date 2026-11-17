@@ -1,0 +1,46 @@
+<configuration>
+    <springProperty scope="context" name="applicationName" source="spring.application.name" defaultValue="srm-credit-engine"/>
+    <springProperty scope="context" name="graylogHost" source="GRAYLOG_HOST" defaultValue="graylog"/>
+    <springProperty scope="context" name="graylogPort" source="GRAYLOG_PORT" defaultValue="12201"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="de.siegmar.logbackgelf.GelfEncoder">
+            <originHost>${HOSTNAME:-localhost}</originHost>
+            <includeMdcData>true</includeMdcData>
+            <includeCallerData>false</includeCallerData>
+            <includeRootCauseData>true</includeRootCauseData>
+            <staticField>application:${applicationName}</staticField>
+            <staticField>environment:${SPRING_PROFILES_ACTIVE:-local}</staticField>
+        </encoder>
+    </appender>
+
+    <springProfile name="graylog">
+        <appender name="GELF" class="de.siegmar.logbackgelf.GelfUdpAppender">
+            <graylogHost>${graylogHost}</graylogHost>
+            <graylogPort>${graylogPort}</graylogPort>
+            <encoder class="de.siegmar.logbackgelf.GelfEncoder">
+                <originHost>${HOSTNAME:-localhost}</originHost>
+                <includeMdcData>true</includeMdcData>
+                <includeCallerData>false</includeCallerData>
+                <includeRootCauseData>true</includeRootCauseData>
+                <staticField>application:${applicationName}</staticField>
+                <staticField>environment:${SPRING_PROFILES_ACTIVE:-local}</staticField>
+            </encoder>
+        </appender>
+        <appender name="ASYNC_GELF" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <neverBlock>true</neverBlock>
+            <appender-ref ref="GELF"/>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_GELF"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!graylog">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
